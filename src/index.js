@@ -1,173 +1,122 @@
 import * as THREE from 'three'
 import { WEBGL } from './webgl'
-import './modal'
 
 if (WEBGL.isWebGLAvailable()) {
-  var camera, scene, renderer
-  var plane
-  var mouse,
-    raycaster,
-    isShiftDown = false
+  //장면 생성
+  const scene = new THREE.Scene();
+  //scene.background = new THREE.Color(0x000000);
 
-  var rollOverMesh, rollOverMaterial
-  var cubeGeo, cubeMaterial
+  //카메라 생성
+  const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+  camera.position.z = 5;
+  
+  //렌더러 생성
+  const renderer = new THREE.WebGLRenderer({
+    alpha: true,
+    antialias: false,
+    powerPreference: 'low-power'
+  });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1));
+  document.body.appendChild(renderer.domElement);
 
-  var objects = []
+  // 조명 추가
+  const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+  scene.add(ambientLight);
 
-  init()
-  render()
+  const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+  directionalLight.position.set(5, 5, 5);
+  scene.add(directionalLight);
 
-  function init() {
-    camera = new THREE.PerspectiveCamera(
-      45,
-      window.innerWidth / window.innerHeight,
-      1,
-      10000
-    )
-    camera.position.set(500, 800, 1300)
-    camera.lookAt(0, 0, 0)
+  // 텍스처 로더 생성
+  const textureLoader = new THREE.TextureLoader();
+  
+  // 텍스처 로딩
+  textureLoader.load(
+    '../static/textures/Alien_Flesh_001_color.jpg',
+    function(texture) {
+      // 텍스처가 로드되면 실행되는 콜백
+      texture.wrapS = THREE.RepeatWrapping;
+      texture.wrapT = THREE.RepeatWrapping;
+      
+      //매쉬 생성 - 세부 수준 감소
+      const geometry = new THREE.BoxGeometry(0.5, 0.5, 0.5);
+      const geometry3 = new THREE.CylinderGeometry(0.5, 0.5, 1, 8);
+      const geometry5 = new THREE.IcosahedronGeometry(0.5, 0);
 
-    scene = new THREE.Scene()
-    scene.background = new THREE.Color(0xf0f0f0)
+      const material = new THREE.MeshStandardMaterial({ 
+        map: texture,
+       // wireframe: true,
+        opacity: 0.5,
+        transparent: true
+      });
+      const material3 = new THREE.MeshStandardMaterial({ 
+        map: texture,
+        opacity: 0.5,
+        metalness: 0.5,
+        roughness: 0.5,
+        transparent: true
+      });
+      const material5 = new THREE.MeshStandardMaterial({ 
+        map: texture,
+       // wireframe: true,
+        opacity: 0.5,
+        transparent: true
+      });
 
-    var rollOverGeo = new THREE.BoxBufferGeometry(50, 50, 50)
-    rollOverMaterial = new THREE.MeshBasicMaterial({
-      color: 0xff0000,
-      opacity: 0.5,
-      transparent: true,
-    })
-    rollOverMesh = new THREE.Mesh(rollOverGeo, rollOverMaterial)
-    scene.add(rollOverMesh)
+      const cube = new THREE.Mesh(geometry, material);
+      cube.position.x = -1;
+      const cube3 = new THREE.Mesh(geometry3, material3);
+      cube3.position.x = 0;
+      const cube5 = new THREE.Mesh(geometry5, material5);
+      cube5.position.x = -2;
 
-    cubeGeo = new THREE.BoxBufferGeometry(50, 50, 50)
-    cubeMaterial = new THREE.MeshLambertMaterial({
-      color: 0xfeb74c,
-      map: new THREE.TextureLoader().load('static/textures/square.png'),
-    })
+      scene.add(cube);
+      scene.add(cube3);
+      scene.add(cube5);
+    },
+    undefined, // 진행 콜백
+    function(error) {
+      console.error('텍스처 로딩 중 오류 발생:', error);
+    }
+  );
 
-    var gridHelper = new THREE.GridHelper(1000, 20)
-    scene.add(gridHelper)
-
-    raycaster = new THREE.Raycaster()
-    mouse = new THREE.Vector2()
-
-    var geometry = new THREE.PlaneBufferGeometry(1000, 1000)
-    geometry.rotateX(-Math.PI / 2)
-
-    plane = new THREE.Mesh(
-      geometry,
-      new THREE.MeshBasicMaterial({ visible: false })
-    )
-    scene.add(plane)
-
-    objects.push(plane)
-
-    var ambientLight = new THREE.AmbientLight(0x606060)
-    scene.add(ambientLight)
-
-    var directionalLight = new THREE.DirectionalLight(0xffffff)
-    directionalLight.position.set(1, 0.75, 0.5).normalize()
-    scene.add(directionalLight)
-
-    renderer = new THREE.WebGLRenderer({ antialias: true })
-    renderer.setPixelRatio(window.devicePixelRatio)
-    renderer.setSize(window.innerWidth, window.innerHeight)
-    document.body.appendChild(renderer.domElement)
-
-    document.addEventListener('mousemove', onDocumentMouseMove, false)
-    document.addEventListener('mousedown', onDocumentMouseDown, false)
-    document.addEventListener('keydown', onDocumentKeyDown, false)
-    document.addEventListener('keyup', onDocumentKeyUp, false)
-    window.addEventListener('resize', onWindowResize, false)
+  let animationFrameId;
+  function render(time) {
+    time *= 0.0005;
+    
+    if (scene.children.length > 2) { // 조명을 제외한 메시가 있는 경우에만 회전
+      const cube = scene.children[2];
+      const cube3 = scene.children[3];
+      const cube5 = scene.children[4];
+      
+      cube.rotation.x = time;
+      cube.rotation.y = time;
+      cube3.rotation.x = time;
+      cube3.rotation.y = time;
+      cube5.rotation.x = time;
+      cube5.rotation.y = time;
+    }
+    
+    renderer.render(scene, camera);
+    animationFrameId = requestAnimationFrame(render);
   }
+
+  animationFrameId = requestAnimationFrame(render);
 
   function onWindowResize() {
-    camera.aspect = window.innerWidth / window.innerHeight
-    camera.updateProjectionMatrix()
-
-    renderer.setSize(window.innerWidth, window.innerHeight)
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1));
   }
+  window.addEventListener('resize', onWindowResize);
 
-  function onDocumentMouseMove(event) {
-    event.preventDefault()
-
-    mouse.set(
-      (event.clientX / window.innerWidth) * 2 - 1,
-      -(event.clientY / window.innerHeight) * 2 + 1
-    )
-
-    raycaster.setFromCamera(mouse, camera)
-
-    var intersects = raycaster.intersectObjects(objects)
-
-    if (intersects.length > 0) {
-      var intersect = intersects[0]
-
-      rollOverMesh.position.copy(intersect.point).add(intersect.face.normal)
-      rollOverMesh.position
-        .divideScalar(50)
-        .floor()
-        .multiplyScalar(50)
-        .addScalar(25)
-    }
-
-    render()
-  }
-
-  function onDocumentMouseDown(event) {
-    event.preventDefault()
-
-    mouse.set(
-      (event.clientX / window.innerWidth) * 2 - 1,
-      -(event.clientY / window.innerHeight) * 2 + 1
-    )
-
-    raycaster.setFromCamera(mouse, camera)
-
-    var intersects = raycaster.intersectObjects(objects)
-
-    if (intersects.length > 0) {
-      var intersect = intersects[0]
-
-      if (isShiftDown) {
-        if (intersect.object !== plane) {
-          scene.remove(intersect.object)
-
-          objects.splice(objects.indexOf(intersect.object), 1)
-        }
-
-      } else {
-        var voxel = new THREE.Mesh(cubeGeo, cubeMaterial)
-        voxel.position.copy(intersect.point).add(intersect.face.normal)
-        voxel.position.divideScalar(50).floor().multiplyScalar(50).addScalar(25)
-        scene.add(voxel)
-
-        objects.push(voxel)
-      }
-
-      render()
-    }
-  }
-
-  function onDocumentKeyDown(event) {
-    switch (event.keyCode) {
-      case 16:
-        isShiftDown = true
-        break
-    }
-  }
-
-  function onDocumentKeyUp(event) {
-    switch (event.keyCode) {
-      case 16:
-        isShiftDown = false
-        break
-    }
-  }
-
-  function render() {
-    renderer.render(scene, camera)
-  }
+  window.addEventListener('unload', () => {
+    cancelAnimationFrame(animationFrameId);
+    renderer.dispose();
+  });
+  
 } else {
   var warning = WEBGL.getWebGLErrorMessage()
   document.body.appendChild(warning)
